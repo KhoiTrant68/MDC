@@ -4,4 +4,4 @@ setuptools
 torch
 torchvision 
 compressai
-timm==0.45
+timm==0.4.5
