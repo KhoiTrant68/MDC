@@ -4,7 +4,7 @@
 pip install -r requirements.txt
 
 # Git clone CompressAI
-!git clone https://github.com/InterDigitalInc/CompressAI.git
+git clone https://github.com/InterDigitalInc/CompressAI.git
 cd CompressAI
 pip install -e .
 cd ..
