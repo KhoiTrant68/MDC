@@ -1,4 +1,4 @@
-python training.py \
+python main_compress.py \
 -d ./datasets/imagenet \
 --checkpoint ./checkpoint/mae_pretrain_vit_base.pth \
 --input_size 224 \
