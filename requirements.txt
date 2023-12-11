@@ -1,0 +1,7 @@
+Pillow
+pytorch_msssim
+setuptools
+torch
+torchvision 
+compressai
+timm==0.45
