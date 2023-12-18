@@ -57,6 +57,7 @@ import compressai
 
 from compressai.ops import compute_padding
 from compressai.zoo import load_state_dict, models
+from util.score_cal import write_total_score
 # from compressai.zoo.image import model_architectures as architectures
 
 from compressai.utils.eval_model.huffman import HuffmanCoding
@@ -86,7 +87,7 @@ def collect_images(rootpath: str) -> List[str]:
     image_files = []
 
     for ext in IMG_EXTENSIONS:
-        image_files.extend(Path(os.path.join(rootpath,'images/test')).rglob(f"*{ext}"))
+        image_files.extend(Path(os.path.join(rootpath)).rglob(f"*{ext}"))
     return sorted(image_files)
 
 
@@ -119,28 +120,28 @@ def reconstruct(reconstruction, filename, recon_path):
 
 
 @torch.no_grad()
-def inference(model, x, filename, recon_path, exp_name, dataset):
+def inference(model, x, filename, recon_path, exp_name, dataset, args):
     if not os.path.exists(recon_path):
         os.makedirs(recon_path)
 
     x = x.unsqueeze(0)
     h, w = x.size(2), x.size(3)
-    pad, unpad = compute_padding(h, w, min_div=2**6)  # pad to allow 6 strides of 2
+    pad, unpad = compute_padding(h, w, min_div=224)  # pad to allow 6 strides of 2
     x_padded = F.pad(x, pad, mode="constant", value=0)
 
-    data_info = pd.read_csv(os.path.join(dataset, 'scores/test/texture.csv'), sep=',', encoding="utf-8")
+    # data_info = pd.read_csv(os.path.join(dataset, 'scores/test/texture.csv'), sep=',', encoding="utf-8")
 
-    # Note that the suffix of the image should be consistent, e.g. '.png', '.jpg'
-    # If an error is reported, changing to the code below may be valid:
-    # t_scores = data_info.loc[(data_info['image'].replace('jpg','png') == filename)].iloc[:, 1:].values.tolist()
-    t_scores = data_info.loc[(data_info['image'] == filename)].iloc[:, 1:].values.tolist()
-    t_scores = torch.Tensor(t_scores)
+    # # Note that the suffix of the image should be consistent, e.g. '.png', '.jpg'
+    # # If an error is reported, changing to the code below may be valid:
+    # # t_scores = data_info.loc[(data_info['image'].replace('jpg','png') == filename)].iloc[:, 1:].values.tolist()
+    # t_scores = data_info.loc[(data_info['image'] == filename)].iloc[:, 1:].values.tolist()
+    # t_scores = torch.Tensor(t_scores)
 
-    data_info2 = pd.read_csv(os.path.join(dataset, 'scores/test/structure.csv'), sep=',', encoding="utf-8")
+    # data_info2 = pd.read_csv(os.path.join(dataset, 'scores/test/structure.csv'), sep=',', encoding="utf-8")
 
-    # Note that the suffix of the image should be consistent, e.g. '.png', '.jpg'
-    s_scores = data_info2.loc[(data_info2['image'] == filename)].iloc[:, 1:].values.tolist()
-    s_scores = torch.Tensor(s_scores)
+    # # Note that the suffix of the image should be consistent, e.g. '.png', '.jpg'
+    # s_scores = data_info2.loc[(data_info2['image'] == filename)].iloc[:, 1:].values.tolist()
+    # s_scores = torch.Tensor(s_scores)
 
     start = time.time()
     out_enc = model.compress(x_padded, t_scores, s_scores)
@@ -203,8 +204,8 @@ def inference_entropy_estimation(model, x):
     }
 
 
-def load_pretrained(model: str, metric: str, quality: int) -> nn.Module:
-    return pretrained_models[model](quality=quality, metric=metric, pretrained=True).eval()
+# def load_pretrained(model: str, metric: str, quality: int) -> nn.Module:
+#     return pretrained_models[model](quality=quality, metric=metric, pretrained=True).eval()
 
 
 def load_checkpoint(arch: str, vis_num: int, checkpoint_path: str) -> nn.Module:
@@ -241,7 +242,9 @@ def setup_args():
 
     # Common options.
     parent_parser.add_argument("-d", "--dataset", type=str, help="dataset path")
+    parent_parser.add_argument("-t", "--total_scores_path", type=str, help="total_scores_path")
     parent_parser.add_argument("-r", "--recon_path", type=str, default="reconstruction", help="where to save recon img")
+
     parent_parser.add_argument(
         "-a",
         "--architecture",
@@ -304,12 +307,16 @@ def main(argv):
     parser = setup_args()
     args = parser.parse_args(argv)
 
+    assert args.dataset is not None and args.total_scores_path is not None
+    write_total_score(mode="test", args=args)
+
     filepaths = collect_images(args.dataset)
     if len(filepaths) == 0:
         print("Error: no images found in directory.", file=sys.stderr)
         sys.exit(1)
 
     compressai.set_entropy_coder(args.entropy_coder)
+
 
     runs = args.paths
     opts = (args.architecture, )

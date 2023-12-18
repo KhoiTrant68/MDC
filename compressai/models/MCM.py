@@ -279,7 +279,8 @@ class MCM(CompressionModel):
         # idx = torch.multinomial(torch.Tensor((t_scores / 255) * s_scores), num_samples=L, replacement=False).cuda()
         # # coco:
         # idx = torch.multinomial(torch.Tensor(t_scores * s_scores), num_samples=L, replacement=False).cuda()
-        idx = torch.multinomial(total_scores, num_samples=L, replacement=False).cuda()
+        # idx = torch.multinomial(total_scores, num_samples=L, replacement=False).cuda()
+        idx = torch.multinomial(total_scores, num_samples=L, replacement=False)
         # idx = torch.multinomial(total_scores, num_samples=L, replacement=False)
 
 
@@ -448,12 +449,12 @@ class MCM(CompressionModel):
             "x_hat": x_hat
         }
 
-    def compress(self, x, t_scores, s_scores):
+    def compress(self, x, total_score):
         vis_num = self.vis_tokens
         if next(self.parameters()).device != torch.device("cpu"):
             warnings.warn("Inference on GPU is not recommended for the autoregressive "
                           "models (the entropy coder is run sequentially on CPU).")
-        y, ids_keep = self.forward_encoder(x, t_scores, s_scores)
+        y, ids_keep = self.forward_encoder(x, total_score)
 
         y = y.view(-1, int(vis_num**0.5), int(vis_num**0.5), self.embed_dim).permute(0, 3, 1, 2).contiguous()
         y = self.g_a(y).float()

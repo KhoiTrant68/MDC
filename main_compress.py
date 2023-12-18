@@ -161,7 +161,6 @@ def get_args_parser():
         type=float,
         help="Auxiliary loss learning rate (default: %(default)s)",
     )
-    parser.add_argument("--cuda", action="store_true", help="Use cuda")
     parser.add_argument(
         "--save", action="store_true", default=True, help="Save model to disk"
     )

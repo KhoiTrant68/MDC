@@ -11,7 +11,9 @@ def define_Feature_Net(requires_grad=False, net_type='vgg16', gpu_ids=[]):
     else:
         raise NotImplementedError('Feature net name [%s] is not recognized' % net_type)
 
-    netFeature.cuda()
+    # netFeature.cuda()
+    netFeature.cpu()
+
 
     return netFeature
     
