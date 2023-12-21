@@ -390,18 +390,19 @@ class MCM(CompressionModel):
     def forward(self, imgs, total_scores):
         vis_num = self.vis_tokens
         y, ids_restore = self.forward_encoder(imgs, total_scores)
-        y = y.view(-1, int(vis_num**0.5), int(vis_num**0.5), self.embed_dim).permute(0, 3, 1, 2).contiguous()
 
-        y = self.g_a(y).float()
+        y = y.view(-1, int(vis_num**0.5), int(vis_num**0.5), self.embed_dim).permute(0, 3, 1, 2).contiguous() #(1, 768, 12, 12)
+
+        y = self.g_a(y).float() #(1, 384, 12, 12)
         y_shape = y.shape[2:]
 
-        z = self.h_a(y)
+        z = self.h_a(y) # (1, 192, 12, 12)
         _, z_likelihoods = self.entropy_bottleneck(z)
         z_offset = self.entropy_bottleneck._get_medians()
         z_tmp = z - z_offset
         z_hat = ste_round(z_tmp) + z_offset
 
-        latent_scales = self.h_scale_s(z_hat)
+        latent_scales = self.h_scale_s(z_hat) #(1, 384, 12, 12)
         latent_means = self.h_mean_s(z_hat)
 
         y_slices = y.chunk(self.num_slices, 1)
@@ -413,10 +414,12 @@ class MCM(CompressionModel):
             mean_support = torch.cat([latent_means] + support_slices, dim=1)
             mu = self.cc_mean_transforms[slice_index](mean_support)
             mu = mu[:, :, :y_shape[0], :y_shape[1]]
+            print('mu', mu.shape)
 
             scale_support = torch.cat([latent_scales] + support_slices, dim=1)
             scale = self.cc_scale_transforms[slice_index](scale_support)
             scale = scale[:, :, :y_shape[0], :y_shape[1]]
+            print('scale', scale.shape)
 
             _, y_slice_likelihood = self.gaussian_conditional(y_slice, scale, mu)
 
@@ -432,6 +435,7 @@ class MCM(CompressionModel):
 
         y_hat = torch.cat(y_hat_slices, dim=1)
         y_likelihoods = torch.cat(y_likelihood, dim=1)
+        print('y_hat', y_hat.shape)
 
         y_hat = self.g_s(y_hat)
         y_hat = y_hat.permute(0, 2, 3, 1).contiguous().view(-1, vis_num, self.embed_dim)
@@ -460,8 +464,10 @@ class MCM(CompressionModel):
         y = self.g_a(y).float()
         y_shape = y.shape[2:]
 
-        z = self.h_a(y)
+        z = self.h_a(y) 
+
         z_strings = self.entropy_bottleneck.compress(z)
+        print(z_strings)
         z_hat = self.entropy_bottleneck.decompress(z_strings, z.size()[-2:])
 
         latent_scales = self.h_scale_s(z_hat)
